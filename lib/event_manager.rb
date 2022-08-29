@@ -1,6 +1,7 @@
 require 'csv'
 require 'google/apis/civicinfo_v2'
 require 'erb'
+require 'time'
 
 def clean_zipcode(zipcode)
   zipcode.to_s.rjust(5, '0')[0..4]
@@ -20,6 +21,22 @@ def clean_phone(phone)
   end
 
   phone.join
+end
+
+def clean_time(regdate, times)
+  regdate = regdate.split(' ')
+  time = regdate[1].split(':')
+  hour = time[0].to_i
+  times.push(hour)
+end
+
+def sort_time(times)
+  times_sorted = Hash.new(0)
+  times.reduce do |hash, time|
+    times_sorted[time] += 1
+    hash
+  end
+  times_sorted.sort_by{ |_k, v| v }.reverse
 end
 
 def legislators_by_zipcode(zip)
@@ -57,6 +74,7 @@ contents = CSV.open(
 
 template_letter = File.read('form_letter.erb')
 erb_template = ERB.new template_letter
+times = []
 
 contents.each do |row|
   id = row[0]
@@ -66,9 +84,13 @@ contents.each do |row|
 
   phone = clean_phone(row[:homephone])
 
+  reg_time = clean_time(row[:regdate], times)
+
   legislators = legislators_by_zipcode(zipcode)
 
   form_letter = erb_template.result(binding)
 
   save_thank_you_letter(id, form_letter)
 end
+
+p sort_time(times)
